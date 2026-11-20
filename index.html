@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Watermark Studio — TIM MEDIA</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- JSZip & FileSaver untuk Ekspor ZIP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  
+  <!-- Font Inter & Font Tambahan untuk Variasi Watermark -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400..800;1,400..800&family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&family=Pacifico&display=swap" rel="stylesheet">
+
+  <!-- Konfigurasi Tailwind -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['"Playfair Display"', 'serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+            cursive: ['Pacifico', 'cursive'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Kustomisasi Scrollbar & Range Input agar terlihat modern */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.4);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.7);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 999px;
+      background: #cbd5e1;
+    }
+    .dark input[type="range"]::-webkit-slider-runnable-track {
+      background: #334155;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      margin-top: -5px;
+      background-color: #3b82f6;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    /* Pola papan catur halus untuk latar belakang preview */
+    .checkerboard-bg {
+      background-color: #f1f5f9;
+      background-image: 
+        linear-gradient(45deg, #e2e8f0 25%, transparent 25%), 
+        linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #e2e8f0 75%), 
+        linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    .dark .checkerboard-bg {
+      background-color: #0f172a;
+      background-image: 
+        linear-gradient(45deg, #1e293b 25%, transparent 25%), 
+        linear-gradient(-45deg, #1e293b 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #1e293b 75%), 
+        linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
+
+  <!-- HEADER / NAVBAR -->
+  <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-4 py-3">
+    <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/25">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight leading-none">Watermark Studio</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Batch Photo Watermarking • 100% Lokal di Browser</p>
+        </div>
+      </div>
+
+      <!-- Tombol Aksi Utama (Input Folder / File & Tema) -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Input tersembunyi untuk Folder & File -->
+        <input type="file" id="folderInput" webkitdirectory directory multiple class="hidden" />
+        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple class="hidden" />
+
+        <button onclick="document.getElementById('folderInput').click()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition active:scale-95">
+          <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+          </svg>
+          <span>Pilih Folder</span>
+        </button>
+
+        <button onclick="document.getElementById('fileInput').click()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-500/20 transition active:scale-95">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>Pilih Foto</span>
+        </button>
+
+        <!-- Toggle Tema Gelap / Terang -->
+        <button id="themeToggle" title="Ganti Tema Gelap/Terang" class="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition">
+          <!-- Icon Matahari (muncul saat dark mode) -->
+          <svg id="sunIcon" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <!-- Icon Bulan (muncul saat light mode) -->
+          <svg id="moonIcon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NOTIFIKASI TOAST (Pengganti alert()) -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- KONTEN UTAMA -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-5">
+    
+    <!-- PANEL KIRI: KONTROL WATERMARK (4 kolom di desktop) -->
+    <aside class="lg:col-span-4 xl:col-span-3 flex flex-col gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm h-fit lg:max-h-[calc(100vh-92px)] lg:overflow-y-auto">
+      
+      <!-- 1. Pilihan Tipe Watermark (Tab Teks vs Gambar) -->
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">1. Tipe Watermark</label>
+        <div class="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+          <button id="tabText" onclick="setWatermarkType('text')" class="py-2 px-3 rounded-lg text-sm font-semibold bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm transition">
+            Teks
+          </button>
+          <button id="tabImage" onclick="setWatermarkType('image')" class="py-2 px-3 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition">
+            Gambar / Logo
+          </button>
+        </div>
+      </div>
+
+      <!-- KONTROL MODE TEKS -->
+      <div id="textControls" class="space-y-3.5 border-b border-slate-200 dark:border-slate-800 pb-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Isi Teks Watermark</label>
+          <input type="text" id="wmText" value="© Hak Cipta 2026" placeholder="Masukkan teks watermark..." class="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Jenis Font</label>
+            <select id="wmFont" class="w-full px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="Inter, sans-serif">Sans-Serif (Modern)</option>
+              <option value="'Playfair Display', serif">Serif (Elegan)</option>
+              <option value="'JetBrains Mono', monospace">Monospace (Kode)</option>
+              <option value="'Pacifico', cursive">Cursive (Tulis Tangan)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Warna Teks</label>
+            <div class="flex items-center gap-2">
+              <input type="color" id="wmColor" value="#ffffff" class="h-9 w-12 rounded-lg cursor-pointer bg-transparent border border-slate-200 dark:border-slate-700" />
+              <span id="wmColorHex" class="text-xs font-mono text-slate-500 uppercase">#FFFFFF</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gaya Teks & Bayangan -->
+        <div class="flex flex-wrap items-center gap-2 pt-1">
+          <button type="button" id="btnBold" onclick="toggleTextStyle('bold')" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 transition">
+            B (Tebal)
+          </button>
+          <button type="button" id="btnItalic" onclick="toggleTextStyle('italic')" class="px-3 py-1.5 rounded-lg text-xs italic border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition">
+            I (Miring)
+          </button>
+          <button type="button" id="btnShadow" onclick="toggleTextStyle('shadow')" class="px-3 py-1.5 rounded-lg text-xs font-medium border border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 transition">
+            Bayangan / Outline
+          </button>
+        </div>
+      </div>
+
+      <!-- KONTROL MODE GAMBAR / LOGO -->
+      <div id="imageControls" class="hidden space-y-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+        <label class="block text-xs font-medium text-slate-600 dark:text-slate-300">Unggah File Logo (PNG Transparan disarankan)</label>
+        <input type="file" id="wmImageInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="hidden" />
+        <button onclick="document.getElementById('wmImageInput').click()" class="w-full py-3 px-4 border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 rounded-xl flex flex-col items-center justify-center gap-1.5 text-slate-500 dark:text-slate-400 transition">
+          <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          <span id="wmImageName" class="text-xs font-medium text-center truncate max-w-full">Klik untuk memilih gambar logo</span>
+        </button>
+        <div id="wmLogoPreviewBox" class="hidden items-center justify-center p-2 rounded-xl checkerboard-bg border border-slate-200 dark:border-slate-700">
+          <img id="wmLogoPreview" alt="Preview Logo" class="max-h-16 object-contain" />
+        </div>
+      </div>
+
+      <!-- 2. Ukuran, Transparansi, Rotasi -->
+      <div class="space-y-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">2. Transformasi & Opasitas</label>
+        
+        <!-- Skala / Ukuran -->
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-600 dark:text-slate-300">Ukuran (Skala)</span>
+            <span id="valScale" class="font-mono font-semibold text-blue-600 dark:text-blue-400">25%</span>
+          </div>
+          <input type="range" id="wmScale" min="5" max="100" value="25" class="w-full" />
+        </div>
+
+        <!-- Transparansi -->
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-600 dark:text-slate-300">Transparansi (Opacity)</span>
+            <span id="valOpacity" class="font-mono font-semibold text-blue-600 dark:text-blue-400">85%</span>
+          </div>
+          <input type="range" id="wmOpacity" min="10" max="100" value="85" class="w-full" />
+        </div>
+
+        <!-- Rotasi -->
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-600 dark:text-slate-300">Sudut Rotasi</span>
+            <div class="flex items-center gap-2">
+              <span id="valRotation" class="font-mono font-semibold text-blue-600 dark:text-blue-400">0°</span>
+              <button onclick="resetRotation()" class="text-[11px] text-slate-400 hover:text-blue-500 underline">Reset</button>
+            </div>
+          </div>
+          <input type="range" id="wmRotation" min="-180" max="180" value="0" class="w-full" />
+        </div>
+      </div>
+
+      <!-- 3. Posisi Preset 3x3 & Margin -->
+      <div class="space-y-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+        <div class="flex items-center justify-between">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">3. Posisi (Preset / Geser Manual)</label>
+          <span id="positionModeBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">Preset</span>
+        </div>
+
+        <!-- Grid 3x3 -->
+        <div class="grid grid-cols-3 gap-1.5 bg-slate-100 dark:bg-slate-800 p-2 rounded-xl">
+          <button onclick="applyPresetPosition('top-left')" data-pos="top-left" class="pos-btn py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 transition">↖ Kiri Atas</button>
+          <button onclick="applyPresetPosition('top-center')" data-pos="top-center" class="pos-btn py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 transition">↑ Tengah Atas</button>
+          <button onclick="applyPresetPosition('top-right')" data-pos="top-right" class="pos-btn py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 transition">↗ Kanan Atas</button>
+          
+          <button onclick="applyPresetPosition('middle-left')" data-pos="middle-left" class="pos-btn py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 transition">← Kiri</button>
+          <button onclick="applyPresetPosition('center')" data-pos="center" class="pos-btn py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 transition">• Tengah</button>
+          <button onclick="applyPresetPosition('middle-right')" data-pos="middle-right" class="pos-btn py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 transition">→ Kanan</button>
+          
+          <button onclick="applyPresetPosition('bottom-left')" data-pos="bottom-left" class="pos-btn py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 transition">↙ Kiri Bawah</button>
+          <button onclick="applyPresetPosition('bottom-center')" data-pos="bottom-center" class="pos-btn py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 transition">↓ Tengah Bawah</button>
+          <button onclick="applyPresetPosition('bottom-right')" data-pos="bottom-right" class="pos-btn py-2 rounded-lg text-xs font-semibold ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 transition">↘ Kanan Bawah</button>
+        </div>
+
+        <!-- Margin / Jarak Tepi -->
+        <div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="text-slate-600 dark:text-slate-300">Margin / Jarak Tepi</span>
+            <span id="valMargin" class="font-mono font-semibold text-blue-600 dark:text-blue-400">4%</span>
+          </div>
+          <input type="range" id="wmMargin" min="0" max="20" value="4" class="w-full" />
+        </div>
+        <p class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-blue-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+          </svg>
+          <span>Tips: Anda juga bisa langsung <b>seret (drag)</b> watermark di layar preview!</span>
+        </p>
+      </div>
+
+      <!-- 4. Pengaturan Ekspor & Unduh -->
+      <div class="space-y-3">
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">4. Format Output & Ekspor</label>
+        
+        <div class="grid grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">Format File</label>
+            <select id="exportFormat" class="w-full px-2.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="image/jpeg">JPG (Ukuran Kecil)</option>
+              <option value="image/png">PNG (Lossless)</option>
+            </select>
+          </div>
+          <div id="qualityWrapper">
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-600 dark:text-slate-300">Kualitas JPG</span>
+              <span id="valQuality" class="font-mono font-semibold text-blue-600 dark:text-blue-400">92%</span>
+            </div>
+            <input type="range" id="exportQuality" min="50" max="100" value="92" class="w-full mt-2" />
+          </div>
+        </div>
+
+        <!-- Tombol Unduh Satu & Unduh Batch ZIP -->
+        <div class="pt-2 space-y-2">
+          <button id="btnDownloadSingle" onclick="downloadCurrentPhoto()" disabled class="w-full py-2.5 px-4 rounded-xl text-sm font-semibold bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed transition flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span>Unduh Foto Ini</span>
+          </button>
+
+          <button id="btnDownloadZip" onclick="processAndDownloadZip()" disabled class="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed transition flex items-center justify-center gap-2 shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            <span id="btnZipLabel">Proses & Unduh Ditandai (.ZIP)</span>
+          </button>
+        </div>
+
+        <!-- Progress Bar Batch -->
+        <div id="batchProgressContainer" class="hidden space-y-1.5 pt-1">
+          <div class="flex justify-between text-xs font-medium">
+            <span id="batchProgressText" class="text-blue-600 dark:text-blue-400">Memproses foto...</span>
+            <span id="batchProgressPercent" class="font-mono">0%</span>
+          </div>
+          <div class="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+            <div id="batchProgressBar" class="h-full bg-blue-600 transition-all duration-150 w-0"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- AREA TENGAH & BAWAH: LIVE PREVIEW + GALERI SELEKSI FOTO (8/9 kolom di desktop) -->
+    <section class="lg:col-span-8 xl:col-span-9 flex flex-col gap-4">
+      
+      <!-- KANVAS LIVE PREVIEW -->
+      <div id="dropZone" class="relative flex-1 min-h-[380px] sm:min-h-[480px] rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 checkerboard-bg flex flex-col items-center justify-center overflow-hidden p-4 transition-colors">
+        
+        <!-- Placeholder saat belum ada foto -->
+        <div id="emptyState" class="text-center max-w-md p-6 rounded-2xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg border border-slate-200 dark:border-slate-800">
+          <div class="w-14 h-14 mx-auto mb-3 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h2 class="text-base font-bold mb-1">Seret & Lepas Foto atau Folder ke Sini</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Mendukung format JPG, PNG, dan WEBP. Semua pemrosesan dilakukan secara lokal di perangkat Anda tanpa mengunggah ke server.</p>
+          <div class="flex flex-wrap justify-center gap-2">
+            <button onclick="document.getElementById('folderInput').click()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition">
+              Pilih Folder
+            </button>
+            <button onclick="document.getElementById('fileInput').click()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition">
+              Pilih Beberapa Foto
+            </button>
+          </div>
+        </div>
+
+        <!-- Info Foto Aktif di pojok atas preview -->
+        <div id="previewTopBar" class="hidden absolute top-3 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+          <div class="px-3 py-1.5 rounded-xl bg-slate-900/75 text-white backdrop-blur-md text-xs font-medium flex items-center gap-2 pointer-events-auto">
+            <span id="activeFileName" class="truncate max-w-[200px] sm:max-w-xs">foto.jpg</span>
+            <span id="activeFileRes" class="text-slate-300 font-mono text-[11px]">1920×1080</span>
+          </div>
+          <div class="px-3 py-1.5 rounded-xl bg-blue-600/90 text-white backdrop-blur-md text-xs font-medium shadow">
+            Geser watermark langsung di kanvas
+          </div>
+        </div>
+
+        <!-- Canvas Interaktif -->
+        <canvas id="previewCanvas" class="hidden max-w-full max-h-[62vh] rounded-lg shadow-2xl cursor-move touch-none"></canvas>
+      </div>
+
+      <!-- GALERI SELEKSI FOTO (TANDAI FOTO) -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div class="flex items-center gap-2.5">
+            <h3 class="text-sm font-bold">Daftar Foto</h3>
+            <span id="photoCounterBadge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              0 ditandai dari 0 foto
+            </span>
+          </div>
+
+          <!-- Tombol Seleksi Cepat -->
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button onclick="selectAllPhotos(true)" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition">
+              Pilih Semua
+            </button>
+            <button onclick="selectAllPhotos(false)" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition">
+              Batal Pilih
+            </button>
+            <button onclick="clearAllPhotos()" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition">
+              Hapus Daftar
+            </button>
+          </div>
+        </div>
+
+        <!-- Grid Thumbnail Galeri -->
+        <div id="galleryGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-3 max-h-[260px] overflow-y-auto pr-1">
+          <div class="col-span-full py-8 text-center text-xs text-slate-400">
+            Belum ada foto yang dimuat. Gunakan tombol "Pilih Folder" atau "Pilih Foto" di atas.
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    /**
+     * STATE UTAMA APLIKASI
+     */
+    const state = {
+      photos: [], // Array of { id, file, name, url, img, width, height, selected }
+      activePhotoId: null,
+      watermark: {
+        type: 'text', // 'text' | 'image'
+        // Properti Teks
+        text: '© Hak Cipta 2026',
+        fontFamily: 'Inter, sans-serif',
+        color: '#ffffff',
+        bold: true,
+        italic: false,
+        shadow: true,
+        // Properti Gambar/Logo
+        logoImg: null,
+        logoName: '',
+        // Transformasi & Posisi (dalam persentase relatif 0.0 - 1.0 terhadap dimensi foto)
+        scale: 0.25,       // 25% dari lebar foto
+        opacity: 0.85,     // 85%
+        rotation: 0,       // derajat (-180 s/d 180)
+        positionPreset: 'bottom-right', // 'custom' atau nama preset 3x3
+        margin: 0.04,      // 4% margin tepi
+        normX: 0.85,       // Titik pusat X ternormalisasi (0..1)
+        normY: 0.90        // Titik pusat Y ternormalisasi (0..1)
+      },
+      drag: {
+        isDragging: false,
+        offsetX: 0,
+        offsetY: 0
+      }
+    };
+
+    // Referensi Elemen DOM
+    const canvas = document.getElementById('previewCanvas');
+    const ctx = canvas.getContext('2d');
+    const dropZone = document.getElementById('dropZone');
+
+    /**
+     * INISIALISASI EVENT LISTENERS
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      // Theme Toggle
+      document.getElementById('themeToggle').addEventListener('click', () => {
+        document.documentElement.classList.toggle('dark');
+      });
+
+      // Input Folder & File
+      document.getElementById('folderInput').addEventListener('change', (e) => handleFilesInput(e.target.files));
+      document.getElementById('fileInput').addEventListener('change', (e) => handleFilesInput(e.target.files));
+
+      // Drag & Drop Area
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evtName => {
+        dropZone.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+      });
+
+      dropZone.addEventListener('dragover', () => {
+        dropZone.classList.add('border-blue-500', 'bg-blue-500/5');
+      });
+
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-blue-500', 'bg-blue-500/5');
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        dropZone.classList.remove('border-blue-500', 'bg-blue-500/5');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          handleFilesInput(e.dataTransfer.files);
+        }
+      });
+
+      // Kontrol Teks Watermark
+      document.getElementById('wmText').addEventListener('input', (e) => {
+        state.watermark.text = e.target.value;
+        recalculatePresetIfNeeded();
+        renderPreview();
+      });
+
+      document.getElementById('wmFont').addEventListener('change', (e) => {
+        state.watermark.fontFamily = e.target.value;
+        recalculatePresetIfNeeded();
+        renderPreview();
+      });
+
+      document.getElementById('wmColor').addEventListener('input', (e) => {
+        state.watermark.color = e.target.value;
+        document.getElementById('wmColorHex').textContent = e.target.value.toUpperCase();
+        renderPreview();
+      });
+
+      // Kontrol Gambar Logo Watermark
+      document.getElementById('wmImageInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            state.watermark.logoImg = img;
+            state.watermark.logoName = file.name;
+            document.getElementById('wmImageName').textContent = file.name;
+            const prevBox = document.getElementById('wmLogoPreviewBox');
+            const prevImg = document.getElementById('wmLogoPreview');
+            prevImg.src = ev.target.result;
+            prevBox.classList.remove('hidden');
+            prevBox.classList.add('flex');
+            recalculatePresetIfNeeded();
+            renderPreview();
+            showToast('Logo watermark berhasil dimuat!', 'success');
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      // Slider Skala, Opacity, Rotasi, Margin
+      document.getElementById('wmScale').addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        state.watermark.scale = val / 100;
+        document.getElementById('valScale').textContent = `${val}%`;
+        recalculatePresetIfNeeded();
+        renderPreview();
+      });
+
+      document.getElementById('wmOpacity').addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        state.watermark.opacity = val / 100;
+        document.getElementById('valOpacity').textContent = `${val}%`;
+        renderPreview();
+      });
+
+      document.getElementById('wmRotation').addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        state.watermark.rotation = val;
+        document.getElementById('valRotation').textContent = `${val}°`;
+        renderPreview();
+      });
+
+      document.getElementById('wmMargin').addEventListener('input', (e) => {
+        const val = parseInt(e.target.value, 10);
+        state.watermark.margin = val / 100;
+        document.getElementById('valMargin').textContent = `${val}%`;
+        if (state.watermark.positionPreset === 'custom') {
+          state.watermark.positionPreset = 'bottom-right';
+        }
+        recalculatePresetIfNeeded();
+        renderPreview();
+      });
+
+      // Format & Kualitas Output
+      document.getElementById('exportFormat').addEventListener('change', (e) => {
+        const qWrap = document.getElementById('qualityWrapper');
+        if (e.target.value === 'image/png') {
+          qWrap.classList.add('opacity-40', 'pointer-events-none');
+        } else {
+          qWrap.classList.remove('opacity-40', 'pointer-events-none');
+        }
+      });
+
+      document.getElementById('exportQuality').addEventListener('input', (e) => {
+        document.getElementById('valQuality').textContent = `${e.target.value}%`;
+      });
+
+      // Event Interaktif Drag Watermark pada Canvas (Mouse & Touch)
+      setupCanvasInteraction();
+    });
+
+    /**
+     * MEMUAT FILE FOTO DARI FOLDER / FILE INPUT / DRAG & DROP
+     */
+    async function handleFilesInput(fileList) {
+      if (!fileList || fileList.length === 0) return;
+
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      const validFiles = Array.from(fileList).filter(file => {
+        if (validTypes.includes(file.type)) return true;
+        // Fallback cek ekstensi jika file.type kosong pada beberapa OS
+        return /\.(jpe?g|png|webp)$/i.test(file.name);
+      });
+
+      if (validFiles.length === 0) {
+        showToast('Tidak ada file gambar valid (JPG, PNG, WEBP) ditemukan.', 'error');
+        return;
+      }
+
+      showToast(`Memuat ${validFiles.length} foto...`, 'info');
+
+      let firstNewId = null;
+
+      for (const file of validFiles) {
+        try {
+          const photoObj = await loadPhotoMetadata(file);
+          state.photos.push(photoObj);
+          if (!firstNewId) firstNewId = photoObj.id;
+        } catch (err) {
+          console.error('Gagal memuat foto:', file.name, err);
+        }
+      }
+
+      if (!state.activePhotoId && firstNewId) {
+        state.activePhotoId = firstNewId;
+      }
+
+      updateGalleryUI();
+      updateActionButtons();
+      recalculatePresetIfNeeded();
+      renderPreview();
+
+      showToast(`${validFiles.length} foto berhasil ditambahkan!`, 'success');
+      
+      // Reset nilai input agar bisa memilih file/folder yang sama lagi jika dihapus
+      document.getElementById('folderInput').value = '';
+      document.getElementById('fileInput').value = '';
+    }
+
+    function loadPhotoMetadata(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          resolve({
+            id: 'photo_' + Math.random().toString(36).substring(2, 11),
+            file,
+            name: file.name,
+            url,
+            img,
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+            selected: true // Otomatis ditandai saat dimuat
+          });
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    /**
+     * MANAJEMEN GALERI & SELEKSI FOTO
+     */
+    function updateGalleryUI() {
+      const grid = document.getElementById('galleryGrid');
+      const total = state.photos.length;
+      const selectedCount = state.photos.filter(p => p.selected).length;
+
+      document.getElementById('photoCounterBadge').textContent = `${selectedCount} ditandai dari ${total} foto`;
+
+      if (total === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-8 text-center text-xs text-slate-400">
+            Belum ada foto yang dimuat. Gunakan tombol "Pilih Folder" atau "Pilih Foto" di atas.
+          </div>
+        `;
+        document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('previewTopBar').classList.add('hidden');
+        canvas.classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('emptyState').classList.add('hidden');
+      document.getElementById('previewTopBar').classList.remove('hidden');
+      canvas.classList.remove('hidden');
+
+      grid.innerHTML = state.photos.map(photo => {
+        const isActive = photo.id === state.activePhotoId;
+        return `
+          <div onclick="setActivePhoto('${photo.id}')" class="group relative rounded-xl overflow-hidden border-2 cursor-pointer transition-all bg-slate-100 dark:bg-slate-800 ${isActive ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600'}">
+            <!-- Thumbnail Image -->
+            <div class="aspect-square w-full overflow-hidden">
+              <img src="${photo.url}" alt="${photo.name}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200 ${!photo.selected ? 'opacity-45 grayscale' : ''}" />
+            </div>
+
+            <!-- Checkbox Tandai Foto -->
+            <label onclick="event.stopPropagation()" class="absolute top-2 left-2 z-10 flex items-center justify-center w-6 h-6 rounded-lg bg-slate-900/70 backdrop-blur-sm cursor-pointer hover:bg-slate-900">
+              <input type="checkbox" ${photo.selected ? 'checked' : ''} onchange="togglePhotoSelection('${photo.id}', this.checked)" class="w-4 h-4 rounded accent-blue-600 cursor-pointer" />
+            </label>
+
+            <!-- Badge Aktif -->
+            ${isActive ? `<span class="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-bold shadow">Aktif</span>` : ''}
+
+            <!-- Nama & Resolusi -->
+            <div class="p-1.5 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800">
+              <p class="text-[11px] font-medium truncate" title="${photo.name}">${photo.name}</p>
+              <p class="text-[10px] text-slate-400 font-mono">${photo.width}×${photo.height}</p>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setActivePhoto(id) {
+      state.activePhotoId = id;
+      updateGalleryUI();
+      recalculatePresetIfNeeded();
+      renderPreview();
+    }
+
+    function togglePhotoSelection(id, isChecked) {
+      const photo = state.photos.find(p => p.id === id);
+      if (photo) {
+        photo.selected = isChecked;
+        updateGalleryUI();
+        updateActionButtons();
+      }
+    }
+
+    function selectAllPhotos(selectState) {
+      if (state.photos.length === 0) return;
+      state.photos.forEach(p => p.selected = selectState);
+      updateGalleryUI();
+      updateActionButtons();
+    }
+
+    function clearAllPhotos() {
+      state.photos.forEach(p => URL.revokeObjectURL(p.url));
+      state.photos = [];
+      state.activePhotoId = null;
+      updateGalleryUI();
+      updateActionButtons();
+      showToast('Daftar foto telah dibersihkan.', 'info');
+    }
+
+    function updateActionButtons() {
+      const btnSingle = document.getElementById('btnDownloadSingle');
+      const btnZip = document.getElementById('btnDownloadZip');
+      const btnZipLabel = document.getElementById('btnZipLabel');
+      const selectedCount = state.photos.filter(p => p.selected).length;
+
+      // Tombol Unduh Foto Aktif
+      if (state.activePhotoId) {
+        btnSingle.disabled = false;
+        btnSingle.className = 'w-full py-2.5 px-4 rounded-xl text-sm font-semibold bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white transition flex items-center justify-center gap-2 active:scale-95';
+      } else {
+        btnSingle.disabled = true;
+        btnSingle.className = 'w-full py-2.5 px-4 rounded-xl text-sm font-semibold bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed transition flex items-center justify-center gap-2';
+      }
+
+      // Tombol Unduh ZIP
+      if (selectedCount > 0) {
+        btnZip.disabled = false;
+        btnZip.className = 'w-full py-3 px-4 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-2 active:scale-95';
+        btnZipLabel.textContent = `Proses & Unduh ${selectedCount} Foto (.ZIP)`;
+      } else {
+        btnZip.disabled = true;
+        btnZip.className = 'w-full py-3 px-4 rounded-xl text-sm font-semibold bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed transition flex items-center justify-center gap-2';
+        btnZipLabel.textContent = 'Proses & Unduh Ditandai (.ZIP)';
+      }
+    }
+
+    /**
+     * PENGATURAN TIPE & GAYA WATERMARK
+     */
+    function setWatermarkType(type) {
+      state.watermark.type = type;
+      const tabText = document.getElementById('tabText');
+      const tabImage = document.getElementById('tabImage');
+      const textControls = document.getElementById('textControls');
+      const imageControls = document.getElementById('imageControls');
+
+      if (type === 'text') {
+        tabText.className = 'py-2 px-3 rounded-lg text-sm font-semibold bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm transition';
+        tabImage.className = 'py-2 px-3 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+        textControls.classList.remove('hidden');
+        imageControls.classList.add('hidden');
+      } else {
+        tabImage.className = 'py-2 px-3 rounded-lg text-sm font-semibold bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm transition';
+        tabText.className = 'py-2 px-3 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition';
+        imageControls.classList.remove('hidden');
+        textControls.classList.add('hidden');
+      }
+
+      recalculatePresetIfNeeded();
+      renderPreview();
+    }
+
+    function toggleTextStyle(prop) {
+      state.watermark[prop] = !state.watermark[prop];
+      const btnMap = {
+        bold: document.getElementById('btnBold'),
+        italic: document.getElementById('btnItalic'),
+        shadow: document.getElementById('btnShadow')
+      };
+      const btn = btnMap[prop];
+      if (state.watermark[prop]) {
+        btn.classList.add('border-blue-500', 'bg-blue-500/10', 'text-blue-600', 'dark:text-blue-400');
+        btn.classList.remove('border-slate-200', 'dark:border-slate-700', 'text-slate-600', 'dark:text-slate-300');
+      } else {
+        btn.classList.remove('border-blue-500', 'bg-blue-500/10', 'text-blue-600', 'dark:text-blue-400');
+        btn.classList.add('border-slate-200', 'dark:border-slate-700', 'text-slate-600', 'dark:text-slate-300');
+      }
+      recalculatePresetIfNeeded();
+      renderPreview();
+    }
+
+    function resetRotation() {
+      state.watermark.rotation = 0;
+      document.getElementById('wmRotation').value = 0;
+      document.getElementById('valRotation').textContent = '0°';
+      renderPreview();
+    }
+
+    /**
+     * KALKULASI DIMENSI & POSISI PRESET 3x3
+     */
+    function getWatermarkDimensions(targetWidth, targetHeight) {
+      const wm = state.watermark;
+      const desiredWidth = targetWidth * wm.scale;
+
+      if (wm.type === 'image' && wm.logoImg) {
+        const aspect = wm.logoImg.naturalHeight / wm.logoImg.naturalWidth;
+        return {
+          width: desiredWidth,
+          height: desiredWidth * aspect,
+          fontSize: 0
+        };
+      } else {
+        // Mode Teks
+        const text = wm.text || 'Watermark';
+        // Ukur rasio teks menggunakan font referensi 100px
+        const offCtx = document.createElement('canvas').getContext('2d');
+        const fontStyle = `${wm.italic ? 'italic ' : ''}${wm.bold ? 'bold ' : ''}100px ${wm.fontFamily}`;
+        offCtx.font = fontStyle;
+        const metrics = offCtx.measureText(text);
+        const refWidth = Math.max(metrics.width, 10);
+        const fontSize = (desiredWidth / refWidth) * 100;
+        const height = fontSize * 1.15;
+
+        return {
+          width: desiredWidth,
+          height: height,
+          fontSize: fontSize
+        };
+      }
+    }
+
+    function applyPresetPosition(preset) {
+      state.watermark.positionPreset = preset;
+      
+      // Update tampilan tombol grid 3x3
+      document.querySelectorAll('.pos-btn').forEach(btn => {
+        if (btn.dataset.pos === preset) {
+          btn.className = 'pos-btn py-2 rounded-lg text-xs font-semibold ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 transition';
+        } else {
+          btn.className = 'pos-btn py-2 rounded-lg text-xs font-medium bg-white dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-slate-600 transition';
+        }
+      });
+
+      const badge = document.getElementById('positionModeBadge');
+      badge.textContent = preset === 'custom' ? 'Manual (Geser)' : 'Preset';
+
+      recalculatePresetIfNeeded();
+      renderPreview();
+    }
+
+    function recalculatePresetIfNeeded() {
+      const preset = state.watermark.positionPreset;
+      if (preset === 'custom') return;
+
+      const activePhoto = state.photos.find(p => p.id === state.activePhotoId);
+      const refW = activePhoto ? activePhoto.width : 1000;
+      const refH = activePhoto ? activePhoto.height : 1000;
+
+      const coords = computeNormalizedCoordsForPreset(preset, refW, refH);
+      state.watermark.normX = coords.normX;
+      state.watermark.normY = coords.normY;
+    }
+
+    function computeNormalizedCoordsForPreset(preset, imgW, imgH) {
+      const dims = getWatermarkDimensions(imgW, imgH);
+      const marginPx = Math.min(imgW, imgH) * state.watermark.margin;
+
+      const halfW = dims.width / 2;
+      const halfH = dims.height / 2;
+
+      let cx = imgW / 2;
+      let cy = imgH / 2;
+
+      // Horizontal
+      if (preset.includes('left')) {
+        cx = marginPx + halfW;
+      } else if (preset.includes('right')) {
+        cx = imgW - marginPx - halfW;
+      }
+
+      // Vertical
+      if (preset.includes('top')) {
+        cy = marginPx + halfH;
+      } else if (preset.includes('bottom')) {
+        cy = imgH - marginPx - halfH;
+      }
+
+      return {
+        normX: cx / imgW,
+        normY: cy / imgH
+      };
+    }
+
+    /**
+     * RENDERING WATERMARK KE KANVAS (Digunakan untuk Preview & Ekspor Resolusi Penuh)
+     */
+    function drawWatermarkedPhoto(targetCtx, img, targetW, targetH, showGuideBox = false) {
+      // 1. Gambar Foto Asli
+      targetCtx.clearRect(0, 0, targetW, targetH);
+      targetCtx.drawImage(img, 0, 0, targetW, targetH);
+
+      const wm = state.watermark;
+      const dims = getWatermarkDimensions(targetW, targetH);
+
+      // Jika preset aktif, hitung koordinat akurat sesuai rasio aspek masing-masing foto
+      let cx, cy;
+      if (wm.positionPreset !== 'custom') {
+        const coords = computeNormalizedCoordsForPreset(wm.positionPreset, targetW, targetH);
+        cx = coords.normX * targetW;
+        cy = coords.normY * targetH;
+      } else {
+        cx = wm.normX * targetW;
+        cy = wm.normY * targetH;
+      }
+
+      targetCtx.save();
+      targetCtx.translate(cx, cy);
+      targetCtx.rotate((wm.rotation * Math.PI) / 180);
+      targetCtx.globalAlpha = wm.opacity;
+
+      if (wm.type === 'image' && wm.logoImg) {
+        targetCtx.drawImage(wm.logoImg, -dims.width / 2, -dims.height / 2, dims.width, dims.height);
+      } else {
+        const text = wm.text || 'Watermark';
+        const fontStyle = `${wm.italic ? 'italic ' : ''}${wm.bold ? 'bold ' : ''}${dims.fontSize}px ${wm.fontFamily}`;
+        targetCtx.font = fontStyle;
+        targetCtx.textAlign = 'center';
+        targetCtx.textBaseline = 'middle';
+
+        if (wm.shadow) {
+          targetCtx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+          targetCtx.shadowBlur = Math.max(4, dims.fontSize * 0.12);
+          targetCtx.shadowOffsetX = Math.max(2, dims.fontSize * 0.05);
+          targetCtx.shadowOffsetY = Math.max(2, dims.fontSize * 0.05);
+
+          // Outline tipis agar kontras pada latar belakang terang maupun gelap
+          targetCtx.lineWidth = Math.max(1.5, dims.fontSize * 0.04);
+          targetCtx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+          targetCtx.strokeText(text, 0, 0);
+        }
+
+        targetCtx.fillStyle = wm.color;
+        targetCtx.fillText(text, 0, 0);
+      }
+
+      // Kotak pembatas tipis saat berada di Live Preview untuk memudahkan interaksi drag
+      if (showGuideBox) {
+        targetCtx.shadowColor = 'transparent';
+        targetCtx.globalAlpha = 0.85;
+        targetCtx.strokeStyle = '#3b82f6';
+        targetCtx.lineWidth = Math.max(1.5, targetW * 0.002);
+        targetCtx.setLineDash([6, 4]);
+        targetCtx.strokeRect(-dims.width / 2 - 4, -dims.height / 2 - 4, dims.width + 8, dims.height + 8);
+      }
+
+      targetCtx.restore();
+    }
+
+    /**
+     * RENDER LIVE PREVIEW
+     */
+    function renderPreview() {
+      const activePhoto = state.photos.find(p => p.id === state.activePhotoId);
+      if (!activePhoto) return;
+
+      document.getElementById('activeFileName').textContent = activePhoto.name;
+      document.getElementById('activeFileRes').textContent = `${activePhoto.width}×${activePhoto.height}`;
+
+      // Batasi resolusi kanvas preview maksimal 1200px agar rendering real-time sangat mulus
+      const maxPreviewDim = 1200;
+      let prevW = activePhoto.width;
+      let prevH = activePhoto.height;
+
+      if (prevW > maxPreviewDim || prevH > maxPreviewDim) {
+        const ratio = Math.min(maxPreviewDim / prevW, maxPreviewDim / prevH);
+        prevW = Math.round(prevW * ratio);
+        prevH = Math.round(prevH * ratio);
+      }
+
+      canvas.width = prevW;
+      canvas.height = prevH;
+
+      drawWatermarkedPhoto(ctx, activePhoto.img, prevW, prevH, true);
+    }
+
+    /**
+     * INTERAKSI DRAG & DROP WATERMARK SECARA MANUAL DI CANVAS
+     */
+    function setupCanvasInteraction() {
+      const getPointerPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+          x: (clientX - rect.left) * scaleX,
+          y: (clientY - rect.top) * scaleY
+        };
+      };
+
+      const onStart = (e) => {
+        if (!state.activePhotoId) return;
+        const pos = getPointerPos(e);
+        const wmX = state.watermark.normX * canvas.width;
+        const wmY = state.watermark.normY * canvas.height;
+        const dims = getWatermarkDimensions(canvas.width, canvas.height);
+
+        // Toleransi area sentuh/klik di sekitar watermark
+        const hitRadiusX = Math.max(dims.width * 0.65, 45);
+        const hitRadiusY = Math.max(dims.height * 0.85, 45);
+
+        if (Math.abs(pos.x - wmX) <= hitRadiusX && Math.abs(pos.y - wmY) <= hitRadiusY) {
+          state.drag.isDragging = true;
+          state.drag.offsetX = pos.x - wmX;
+          state.drag.offsetY = pos.y - wmY;
+          if (e.cancelable) e.preventDefault();
+        }
+      };
+
+      const onMove = (e) => {
+        if (!state.drag.isDragging) return;
+        if (e.cancelable) e.preventDefault();
+
+        const pos = getPointerPos(e);
+        let newX = (pos.x - state.drag.offsetX) / canvas.width;
+        let newY = (pos.y - state.drag.offsetY) / canvas.height;
+
+        // Batasi agar pusat watermark tetap berada dalam area foto
+        newX = Math.max(0.02, Math.min(0.98, newX));
+        newY = Math.max(0.02, Math.min(0.98, newY));
+
+        state.watermark.normX = newX;
+        state.watermark.normY = newY;
+
+        if (state.watermark.positionPreset !== 'custom') {
+          applyPresetPosition('custom');
+        } else {
+          renderPreview();
+        }
+      };
+
+      const onEnd = () => {
+        state.drag.isDragging = false;
+      };
+
+      // Mouse Events
+      canvas.addEventListener('mousedown', onStart);
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onEnd);
+
+      // Touch Events
+      canvas.addEventListener('touchstart', onStart, { passive: false });
+      window.addEventListener('touchmove', onMove, { passive: false });
+      window.addEventListener('touchend', onEnd);
+    }
+
+    /**
+     * PROSES EKSPOR & UNDUH (SATU FOTO & BATCH .ZIP)
+     */
+    function renderPhotoToBlob(photo, mimeType, quality) {
+      return new Promise((resolve) => {
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = photo.width;
+        offCanvas.height = photo.height;
+        const offCtx = offCanvas.getContext('2d');
+
+        // Render sesuai resolusi asli foto tanpa kotak panduan biru
+        drawWatermarkedPhoto(offCtx, photo.img, photo.width, photo.height, false);
+
+        offCanvas.toBlob((blob) => {
+          resolve(blob);
+        }, mimeType, quality);
+      });
+    }
+
+    async function downloadCurrentPhoto() {
+      const activePhoto = state.photos.find(p => p.id === state.activePhotoId);
+      if (!activePhoto) return;
+
+      const format = document.getElementById('exportFormat').value;
+      const quality = parseInt(document.getElementById('exportQuality').value, 10) / 100;
+      const ext = format === 'image/png' ? 'png' : 'jpg';
+      const baseName = activePhoto.name.replace(/\.[^/.]+$/, '');
+
+      showToast('Menyiapkan unduhan foto resolusi asli...', 'info');
+      const blob = await renderPhotoToBlob(activePhoto, format, quality);
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${baseName}_watermarked.${ext}`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+
+      showToast('Foto berhasil diunduh!', 'success');
+    }
+
+    async function processAndDownloadZip() {
+      const selectedPhotos = state.photos.filter(p => p.selected);
+      if (selectedPhotos.length === 0) return;
+
+      if (typeof JSZip === 'undefined') {
+        showToast('Pustaka JSZip gagal dimuat. Periksa koneksi internet Anda.', 'error');
+        return;
+      }
+
+      const format = document.getElementById('exportFormat').value;
+      const quality = parseInt(document.getElementById('exportQuality').value, 10) / 100;
+      const ext = format === 'image/png' ? 'png' : 'jpg';
+
+      const btnZip = document.getElementById('btnDownloadZip');
+      const progressContainer = document.getElementById('batchProgressContainer');
+      const progressBar = document.getElementById('batchProgressBar');
+      const progressText = document.getElementById('batchProgressText');
+      const progressPercent = document.getElementById('batchProgressPercent');
+
+      btnZip.disabled = true;
+      progressContainer.classList.remove('hidden');
+
+      const zip = new JSZip();
+      const usedNames = new Set();
+
+      try {
+        for (let i = 0; i < selectedPhotos.length; i++) {
+          const photo = selectedPhotos[i];
+          const pct = Math.round(((i + 1) / selectedPhotos.length) * 100);
+
+          progressText.textContent = `Memproses (${i + 1}/${selectedPhotos.length}): ${photo.name}`;
+          progressPercent.textContent = `${pct}%`;
+          progressBar.style.width = `${pct}%`;
+
+          // Beri jeda microtask agar UI progress bar tetap responsif
+          await new Promise(r => setTimeout(r, 15));
+
+          const blob = await renderPhotoToBlob(photo, format, quality);
+
+          // Pastikan nama file unik di dalam arsip ZIP
+          let baseName = photo.name.replace(/\.[^/.]+$/, '');
+          let finalName = `${baseName}_wm.${ext}`;
+          let counter = 1;
+          while (usedNames.has(finalName.toLowerCase())) {
+            finalName = `${baseName}_wm_${counter}.${ext}`;
+            counter++;
+          }
+          usedNames.add(finalName.toLowerCase());
+
+          zip.file(finalName, blob);
+        }
+
+        progressText.textContent = 'Mengompres arsip ZIP...';
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+        const timestamp = new Date().toISOString().slice(0, 10);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(zipBlob);
+        link.download = `Watermark_Batch_${timestamp}.zip`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+
+        showToast(`Berhasil mengunduh ${selectedPhotos.length} foto dalam file ZIP!`, 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Terjadi kesalahan saat memproses batch ZIP.', 'error');
+      } finally {
+        btnZip.disabled = false;
+        setTimeout(() => {
+          progressContainer.classList.add('hidden');
+          progressBar.style.width = '0%';
+        }, 2000);
+      }
+    }
+
+    /**
+     * SISTEM NOTIFIKASI TOAST (Pengganti alert())
+     */
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+
+      const colors = {
+        info: 'bg-slate-900 dark:bg-slate-800 text-white border-slate-700',
+        success: 'bg-emerald-600 text-white border-emerald-500',
+        error: 'bg-red-600 text-white border-red-500'
+      };
+
+      toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl border shadow-lg text-xs font-medium flex items-center gap-2 transition-all duration-300 translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+      toast.textContent = message;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+  </script>
+</body>
+</html>
